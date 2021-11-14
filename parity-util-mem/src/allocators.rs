@@ -9,29 +9,29 @@
 //! default allocator management
 //! Features are:
 //! - windows:
-//! 	 - no features: default implementation from servo `heapsize` crate
-//! 	 - weealloc: default to `estimate_size`
-//! 	 - dlmalloc: default to `estimate_size`
-//! 	 - jemalloc: default windows allocator is used instead
-//! 	 - mimalloc: use mimallocator crate
+//!	 - no features: default implementation from servo `heapsize` crate
+//!	 - weealloc: default to `estimate_size`
+//!	 - dlmalloc: default to `estimate_size`
+//!	 - jemalloc: default windows allocator is used instead
+//!	 - mimalloc: use mimallocator crate
 //! - arch x86:
-//! 	 - no features: use default alloc
-//! 	 - jemalloc: use tikv-jemallocator crate
-//! 	 - weealloc: default to `estimate_size`
-//! 	 - dlmalloc: default to `estimate_size`
-//! 	 - mimalloc: use mimallocator crate
+//!	 - no features: use default alloc
+//!	 - jemalloc: use jemallocator crate
+//!	 - weealloc: default to `estimate_size`
+//!	 - dlmalloc: default to `estimate_size`
+//!	 - mimalloc: use mimallocator crate
 //! - arch x86/macos:
-//! 	 - no features: use default alloc, requires using `estimate_size`
-//! 	 - jemalloc: use tikv-jemallocator crate
-//! 	 - weealloc: default to `estimate_size`
-//! 	 - dlmalloc: default to `estimate_size`
-//! 	 - mimalloc: use mimallocator crate
+//!	 - no features: use default alloc, requires using `estimate_size`
+//!	 - jemalloc: use jemallocator crate
+//!	 - weealloc: default to `estimate_size`
+//!	 - dlmalloc: default to `estimate_size`
+//!	 - mimalloc: use mimallocator crate
 //! - arch wasm32:
-//! 	 - no features: default to `estimate_size`
-//! 	 - weealloc: default to `estimate_size`
-//! 	 - dlmalloc: default to `estimate_size`
-//! 	 - jemalloc: compile error
-//! 	 - mimalloc: compile error (until https://github.com/microsoft/mimalloc/pull/32 is merged)
+//!	 - no features: default to `estimate_size`
+//!	 - weealloc: default to `estimate_size`
+//!	 - dlmalloc: default to `estimate_size`
+//!	 - jemalloc: compile error
+//!	 - mimalloc: compile error (until https://github.com/microsoft/mimalloc/pull/32 is merged)
 
 #[cfg(feature = "std")]
 use crate::malloc_size::MallocUnconditionalSizeOf;
@@ -85,7 +85,7 @@ mod usable_size {
 
 			/// Use of jemalloc usable size C function through jemallocator crate call.
 			pub unsafe extern "C" fn malloc_usable_size(ptr: *const c_void) -> usize {
-				tikv_jemallocator::usable_size(ptr)
+				jemallocator::usable_size(ptr)
 			}
 
 		} else if #[cfg(feature = "mimalloc-global")] {

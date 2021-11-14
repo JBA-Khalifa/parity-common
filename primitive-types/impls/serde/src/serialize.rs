@@ -6,8 +6,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use alloc::{string::String, vec::Vec};
-use core::{fmt, result::Result};
+use alloc::string::String;
+use alloc::vec::Vec;
+use core::fmt;
+use core::result::Result;
 use serde::{de, Deserializer, Serializer};
 
 static CHARS: &[u8] = b"0123456789abcdef";
@@ -23,12 +25,12 @@ pub fn to_hex(bytes: &[u8], skip_leading_zero: bool) -> String {
 		let non_zero = bytes.iter().take_while(|b| **b == 0).count();
 		let bytes = &bytes[non_zero..];
 		if bytes.is_empty() {
-			return "0x0".into()
+			return "0x0".into();
 		} else {
 			bytes
 		}
 	} else if bytes.is_empty() {
-		return "0x".into()
+		return "0x".into();
 	} else {
 		bytes
 	};
@@ -66,7 +68,6 @@ fn to_hex_raw<'a>(v: &'a mut [u8], bytes: &[u8], skip_leading_zero: bool) -> &'a
 #[derive(Debug, PartialEq, Eq)]
 pub enum FromHexError {
 	/// The `0x` prefix is missing.
-	#[deprecated(since = "0.3.2", note = "We support non 0x-prefixed hex strings")]
 	MissingPrefix,
 	/// Invalid (non-hex) character encountered.
 	InvalidHex {
@@ -83,34 +84,38 @@ impl std::error::Error for FromHexError {}
 impl fmt::Display for FromHexError {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		match *self {
-			#[allow(deprecated)]
 			Self::MissingPrefix => write!(fmt, "0x prefix is missing"),
 			Self::InvalidHex { character, index } => write!(fmt, "invalid hex character: {}, at {}", character, index),
 		}
 	}
 }
 
-/// Decode given (both 0x-prefixed or not) hex string into a vector of bytes.
+/// Decode given hex string into a vector of bytes.
 ///
-/// Returns an error if non-hex characters are present.
+/// Returns an error if the string is not prefixed with `0x`
+/// or non-hex characters are present.
 pub fn from_hex(v: &str) -> Result<Vec<u8>, FromHexError> {
-	let (v, stripped) = v.strip_prefix("0x").map_or((v, false), |v| (v, true));
+	if !v.starts_with("0x") {
+		return Err(FromHexError::MissingPrefix);
+	}
 
-	let mut bytes = vec![0u8; (v.len() + 1) / 2];
-	from_hex_raw(v, &mut bytes, stripped)?;
+	let mut bytes = vec![0u8; (v.len() - 1) / 2];
+	from_hex_raw(v, &mut bytes)?;
 	Ok(bytes)
 }
 
-/// Decode given 0x-prefix-stripped hex string into provided slice.
+/// Decode given 0x-prefixed hex string into provided slice.
 /// Used internally by `from_hex` and `deserialize_check_len`.
 ///
-/// The method will panic if `bytes` have incorrect length (make sure to allocate enough beforehand).
-fn from_hex_raw(v: &str, bytes: &mut [u8], stripped: bool) -> Result<usize, FromHexError> {
-	let bytes_len = v.len();
+/// The method will panic if:
+/// 1. `v` is shorter than 2 characters (you need to check 0x prefix outside).
+/// 2. `bytes` have incorrect length (make sure to allocate enough beforehand).
+fn from_hex_raw<'a>(v: &str, bytes: &mut [u8]) -> Result<usize, FromHexError> {
+	let bytes_len = v.len() - 2;
 	let mut modulus = bytes_len % 2;
 	let mut buf = 0;
 	let mut pos = 0;
-	for (index, byte) in v.bytes().enumerate() {
+	for (index, byte) in v.bytes().enumerate().skip(2) {
 		buf <<= 4;
 
 		match byte {
@@ -119,12 +124,12 @@ fn from_hex_raw(v: &str, bytes: &mut [u8], stripped: bool) -> Result<usize, From
 			b'0'..=b'9' => buf |= byte - b'0',
 			b' ' | b'\r' | b'\n' | b'\t' => {
 				buf >>= 4;
-				continue
-			},
+				continue;
+			}
 			b => {
 				let character = char::from(b);
-				return Err(FromHexError::InvalidHex { character, index: index + if stripped { 2 } else { 0 } })
-			},
+				return Err(FromHexError::InvalidHex { character, index });
+			}
 		}
 
 		modulus += 1;
@@ -205,7 +210,7 @@ where
 		type Value = Vec<u8>;
 
 		fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-			write!(formatter, "a (both 0x-prefixed or not) hex string")
+			write!(formatter, "a 0x-prefixed hex string")
 		}
 
 		fn visit_str<E: de::Error>(self, v: &str) -> Result<Self::Value, E> {
@@ -234,20 +239,22 @@ where
 		type Value = usize;
 
 		fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-			write!(formatter, "a (both 0x-prefixed or not) hex string with {}", self.len)
+			write!(formatter, "a 0x-prefixed hex string with {}", self.len)
 		}
 
 		fn visit_str<E: de::Error>(self, v: &str) -> Result<Self::Value, E> {
-			let (v, stripped) = v.strip_prefix("0x").map_or((v, false), |v| (v, true));
+			if !v.starts_with("0x") {
+				return Err(E::custom(FromHexError::MissingPrefix));
+			}
 
 			let len = v.len();
 			let is_len_valid = match self.len {
-				ExpectedLen::Exact(ref slice) => len == 2 * slice.len(),
-				ExpectedLen::Between(min, ref slice) => len <= 2 * slice.len() && len > 2 * min,
+				ExpectedLen::Exact(ref slice) => len == 2 * slice.len() + 2,
+				ExpectedLen::Between(min, ref slice) => len <= 2 * slice.len() + 2 && len > 2 * min + 2,
 			};
 
 			if !is_len_valid {
-				return Err(E::invalid_length(v.len(), &self))
+				return Err(E::invalid_length(v.len() - 2, &self));
 			}
 
 			let bytes = match self.len {
@@ -255,7 +262,7 @@ where
 				ExpectedLen::Between(_, slice) => slice,
 			};
 
-			from_hex_raw(v, bytes, stripped).map_err(E::custom)
+			from_hex_raw(v, bytes).map_err(E::custom)
 		}
 
 		fn visit_string<E: de::Error>(self, v: String) -> Result<Self::Value, E> {
@@ -275,7 +282,7 @@ mod tests {
 	struct Bytes(#[serde(with = "super")] Vec<u8>);
 
 	#[test]
-	fn should_not_fail_on_short_string_with_prefix() {
+	fn should_not_fail_on_short_string() {
 		let a: Bytes = serde_json::from_str("\"0x\"").unwrap();
 		let b: Bytes = serde_json::from_str("\"0x1\"").unwrap();
 		let c: Bytes = serde_json::from_str("\"0x12\"").unwrap();
@@ -292,44 +299,13 @@ mod tests {
 	}
 
 	#[test]
-	fn should_not_fail_on_other_strings_with_prefix() {
+	fn should_not_fail_on_other_strings() {
 		let a: Bytes =
 			serde_json::from_str("\"0x7f864e18e3dd8b58386310d2fe0919eef27c6e558564b7f67f22d99d20f587\"").unwrap();
 		let b: Bytes =
 			serde_json::from_str("\"0x7f864e18e3dd8b58386310d2fe0919eef27c6e558564b7f67f22d99d20f587b\"").unwrap();
 		let c: Bytes =
 			serde_json::from_str("\"0x7f864e18e3dd8b58386310d2fe0919eef27c6e558564b7f67f22d99d20f587b4\"").unwrap();
-
-		assert_eq!(a.0.len(), 31);
-		assert_eq!(b.0.len(), 32);
-		assert_eq!(c.0.len(), 32);
-	}
-
-	#[test]
-	fn should_not_fail_on_short_string_without_prefix() {
-		let a: Bytes = serde_json::from_str("\"\"").unwrap();
-		let b: Bytes = serde_json::from_str("\"1\"").unwrap();
-		let c: Bytes = serde_json::from_str("\"12\"").unwrap();
-		let d: Bytes = serde_json::from_str("\"123\"").unwrap();
-		let e: Bytes = serde_json::from_str("\"1234\"").unwrap();
-		let f: Bytes = serde_json::from_str("\"12345\"").unwrap();
-
-		assert!(a.0.is_empty());
-		assert_eq!(b.0, vec![1]);
-		assert_eq!(c.0, vec![0x12]);
-		assert_eq!(d.0, vec![0x1, 0x23]);
-		assert_eq!(e.0, vec![0x12, 0x34]);
-		assert_eq!(f.0, vec![0x1, 0x23, 0x45]);
-	}
-
-	#[test]
-	fn should_not_fail_on_other_strings_without_prefix() {
-		let a: Bytes =
-			serde_json::from_str("\"7f864e18e3dd8b58386310d2fe0919eef27c6e558564b7f67f22d99d20f587\"").unwrap();
-		let b: Bytes =
-			serde_json::from_str("\"7f864e18e3dd8b58386310d2fe0919eef27c6e558564b7f67f22d99d20f587b\"").unwrap();
-		let c: Bytes =
-			serde_json::from_str("\"7f864e18e3dd8b58386310d2fe0919eef27c6e558564b7f67f22d99d20f587b4\"").unwrap();
 
 		assert_eq!(a.0.len(), 31);
 		assert_eq!(b.0.len(), 32);
@@ -349,7 +325,7 @@ mod tests {
 	}
 
 	#[test]
-	fn should_encode_to_and_from_hex_with_prefix() {
+	fn should_encode_to_and_from_hex() {
 		assert_eq!(to_hex(&[0, 1, 2], true), "0x102");
 		assert_eq!(to_hex(&[0, 1, 2], false), "0x000102");
 		assert_eq!(to_hex(&[0], true), "0x0");
@@ -359,12 +335,5 @@ mod tests {
 		assert_eq!(from_hex("0x0102"), Ok(vec![1, 2]));
 		assert_eq!(from_hex("0x102"), Ok(vec![1, 2]));
 		assert_eq!(from_hex("0xf"), Ok(vec![0xf]));
-	}
-
-	#[test]
-	fn should_decode_hex_without_prefix() {
-		assert_eq!(from_hex("0102"), Ok(vec![1, 2]));
-		assert_eq!(from_hex("102"), Ok(vec![1, 2]));
-		assert_eq!(from_hex("f"), Ok(vec![0xf]));
 	}
 }

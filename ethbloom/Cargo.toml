@@ -1,6 +1,6 @@
 [package]
 name = "ethbloom"
-version = "0.11.1"
+version = "0.11.0"
 authors = ["Parity Technologies <admin@parity.io>"]
 description = "Ethereum bloom filter"
 license = "MIT OR Apache-2.0"
@@ -16,7 +16,6 @@ fixed-hash = { path = "../fixed-hash", version = "0.7", default-features = false
 impl-serde = { path = "../primitive-types/impls/serde", version = "0.3", default-features = false, optional = true }
 impl-rlp = { path = "../primitive-types/impls/rlp", version = "0.3", default-features = false, optional = true }
 impl-codec = { version = "0.5.0", path = "../primitive-types/impls/codec", default-features = false, optional = true }
-scale-info = { version = "1.0", features = ["derive"], default-features = false, optional = true }
 
 [dev-dependencies]
 criterion = "0.3.0"
@@ -30,7 +29,7 @@ serialize = ["impl-serde"]
 rustc-hex = ["fixed-hash/rustc-hex"]
 arbitrary = ["fixed-hash/arbitrary"]
 rlp = ["impl-rlp"]
-codec = ["impl-codec", "scale-info"]
+codec = ["impl-codec"]
 
 [[bench]]
 name = "bloom"

@@ -98,6 +98,12 @@ jobs:
           command: test
           args: -p ethbloom --all-features
 
+      - name: Test parity-crypto all-features
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: -p parity-crypto --all-features
+
       - name: Test uint on bigendian
         if: runner.os == 'Linux'
         uses: actions-rs/cargo@v1
@@ -154,7 +160,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly
+          toolchain: stable
           override: true
       - run: rustup component add rustfmt
       - uses: actions-rs/cargo@v1

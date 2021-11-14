@@ -6,9 +6,6 @@ The format is based on [Keep a Changelog].
 
 ## [Unreleased]
 
-## [0.5.1] - 2021-07-30
-- Fix rlp encoding/decoding for bool. [#572](https://github.com/paritytech/parity-common/pull/572)
-
 ## [0.5.0] - 2021-01-05
 ### Breaking
 - Use BytesMut for `RlpStream`'s backing buffer. [#453](https://github.com/paritytech/parity-common/pull/453)

@@ -6,6 +6,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//!
 //! ```
 //! use hex_literal::hex;
 //! use ethbloom::{Bloom, Input};
@@ -45,6 +46,7 @@
 //! assert!(my_bloom.contains_input(Input::Raw(&topic)));
 //! assert_eq!(my_bloom, bloom);
 //! ```
+//!
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
@@ -66,7 +68,6 @@ const BLOOM_SIZE: usize = 256;
 
 construct_fixed_hash! {
 	/// Bloom hash type with 256 bytes (2048 bits) size.
-	#[cfg_attr(feature = "codec", derive(scale_info::TypeInfo))]
 	pub struct Bloom(BLOOM_SIZE);
 }
 #[cfg(feature = "rlp")]
@@ -79,7 +80,7 @@ impl_fixed_hash_codec!(Bloom, BLOOM_SIZE);
 /// Returns log2.
 fn log2(x: usize) -> u32 {
 	if x <= 1 {
-		return 0
+		return 0;
 	}
 
 	let n = x.leading_zeros();
@@ -105,7 +106,7 @@ impl<'a> From<Input<'a>> for Hash<'a> {
 				keccak256.update(raw);
 				keccak256.finalize(&mut out);
 				Hash::Owned(out)
-			},
+			}
 			Input::Hash(hash) => Hash::Ref(hash),
 		}
 	}
@@ -247,7 +248,7 @@ impl<'a> BloomRef<'a> {
 			let a = self.0[i];
 			let b = bloom_ref.0[i];
 			if (a & b) != b {
-				return false
+				return false;
 			}
 		}
 		true
